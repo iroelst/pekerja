@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#123d70">
+<title>Aplikasi Data Pekerja & Slip Gaji</title>
+<style>
+:root{--blue:#123d70;--blue2:#1f5fa8;--light:#eef5fc;--ink:#1e293b;--muted:#64748b;--line:#dbe4ef;--green:#16835d;--red:#c24141}
+*{box-sizing:border-box}body{margin:0;background:#f4f7fb;color:var(--ink);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+header{background:linear-gradient(120deg,#123d70,#2875bb);color:#fff;padding:22px max(16px,calc((100% - 1180px)/2));}
+header h1{margin:0 0 5px;font-size:clamp(22px,4vw,30px)}header p{margin:0;color:#e4efff}
+main{max-width:1180px;margin:20px auto;padding:0 14px 40px}.tabs{display:flex;gap:8px;overflow:auto;margin-bottom:18px}
+.tab{border:1px solid var(--line);background:#fff;color:var(--blue);padding:11px 15px;border-radius:10px;font-weight:700;white-space:nowrap;cursor:pointer}
+.tab.active{background:var(--blue);color:white;border-color:var(--blue)}
+.panel{display:none}.panel.active{display:block}.card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:18px;margin-bottom:16px;box-shadow:0 3px 12px #15395b08}
+h2{font-size:20px;margin:0 0 15px}h3{font-size:16px;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+label{display:block;font-weight:650;font-size:13px;color:#334155;margin-bottom:5px}
+input,select,textarea{width:100%;min-width:0;border:1px solid #cbd5e1;border-radius:9px;padding:10px 11px;background:white;color:var(--ink);font:inherit}
+input:focus,select:focus{outline:2px solid #bfdbfe;border-color:#60a5fa}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.btn{border:0;border-radius:9px;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer;background:var(--blue);color:#fff}.btn.secondary{background:#e7eef7;color:var(--blue)}.btn.green{background:var(--green)}.btn.red{background:#fee2e2;color:#991b1b}.btn.small{padding:6px 9px;font-size:12px}
+.note{color:var(--muted);font-size:13px;margin:8px 0 0}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}.stat{background:#fff;border:1px solid var(--line);border-radius:13px;padding:14px}.stat span{display:block;color:var(--muted);font-size:12px}.stat strong{display:block;font-size:clamp(17px,3vw,23px);margin-top:5px}
+.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:620px}th,td{text-align:left;padding:10px 9px;border-bottom:1px solid #e8edf4;font-size:13px;vertical-align:middle}th{background:#f5f8fc;color:#475569;font-weight:750}td.num,th.num{text-align:right}.empty{text-align:center;padding:24px;color:var(--muted)}
+.slip{max-width:720px;margin:0 auto;border:1px solid var(--line);border-radius:12px;padding:22px;background:white}.slip-head{display:flex;justify-content:space-between;gap:15px;border-bottom:2px solid var(--blue);padding-bottom:14px;margin-bottom:15px}.slip-head h2{color:var(--blue);margin:0}.slip-total{background:var(--light);padding:15px;border-radius:10px;margin-top:14px}.slip-total strong{font-size:23px;color:var(--blue)}.right{text-align:right}.hidden{display:none!important}
+@media(max-width:650px){main{margin-top:13px}.grid,.grid.three{grid-template-columns:1fr}.stats{grid-template-columns:1fr}.card{padding:14px}.slip{padding:14px}.slip-head{flex-direction:column}}
+@media print{body{background:white;font-size:12px}header,.tabs,.no-print,.panel:not(#slipPanel),#slipPanel>h2,#slipPanel>.card{display:none!important}main{margin:0;padding:0;max-width:none}#slipPanel{display:block!important}.slip{border:0;border-radius:0;padding:0;max-width:none}.slip table{min-width:0}th,td{font-size:11px;padding:7px}.slip-total{break-inside:avoid}}
+</style>
+</head>
+<body>
+<header><h1>Data Pekerja & Penggajian</h1><p>Kelola pekerja, catat hari kerja dan lembur, lalu cetak slip gaji.</p></header>
+<main>
+<div class="tabs no-print">
+<button class="tab active" data-tab="workers">👷 Data Pekerja</button>
+<button class="tab" data-tab="attendance">📅 Hari Kerja</button>
+<button class="tab" data-tab="slipPanel">🧾 Slip Gaji</button>
+<button class="tab" data-tab="history">📋 Riwayat</button>
+<button class="tab" data-tab="backup">💾 Backup & Restore</button>
+</div>
+<section id="projects" class="panel">
+<div class="card"><h2>Tambah Proyek Pekerjaan</h2><form id="projectForm"><input type="hidden" id="projectEditId"><div class="grid"><div><label for="projectName">Nama proyek *</label><input id="projectName" required placeholder="Contoh: Proyek A"></div><div><label for="projectNote">Keterangan</label><input id="projectNote" placeholder="Lokasi atau keterangan"></div></div><div class="actions"><button class="btn" type="submit" id="projectSaveBtn">Simpan Proyek</button><button class="btn secondary hidden" type="button" id="projectCancel">Batal edit</button></div></form></div>
+<div class="card"><h2>Daftar Proyek</h2><p class="note">Pekerja yang sama dapat dicatat pada proyek berbeda. Riwayat dan slip gaji bisa difilter per proyek.</p><div class="table-wrap"><table><thead><tr><th>Nama proyek</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody id="projectsTable"></tbody></table></div></div>
+</section>
+<section id="workers" class="panel active">
+<div class="stats"><div class="stat"><span>Total pekerja</span><strong id="statWorkers">0</strong></div><div class="stat"><span>Catatan kerja</span><strong id="statRecords">0</strong></div><div class="stat"><span>Total upah tercatat</span><strong id="statWages">Rp0</strong></div></div>
+<div class="card"><h2 id="workerFormTitle">Tambah Pekerja</h2>
+<form id="workerForm">
+<input type="hidden" id="workerEditId">
+<div class="grid">
+<div><label for="workerName">Nama pekerja *</label><input id="workerName" required placeholder="Nama lengkap"></div>
+<div><label for="dailyRate">Gaji per hari (Rp) *</label><input id="dailyRate" type="number" min="0" step="1000" required placeholder="Contoh: 100000"></div>
+<div><label for="overtimeRate">Upah lembur per jam (Rp) *</label><input id="overtimeRate" type="number" min="0" step="500" required placeholder="Contoh: 15000"></div>
+</div>
+<div class="actions"><button class="btn" type="submit" id="workerSaveBtn">Simpan Pekerja</button><button class="btn secondary hidden" type="button" id="workerCancel">Batal edit</button></div>
+<p class="note">Upah kerja per jam dihitung dari gaji harian ÷ 8 jam. Tarif lembur mengikuti nilai per jam yang Anda masukkan.</p>
+</form></div>
+<div class="card"><h2>Daftar Pekerja</h2><div class="table-wrap"><table><thead><tr><th>Nama</th><th class="num">Gaji/hari</th><th class="num">Lembur/jam</th><th>Aksi</th></tr></thead><tbody id="workersTable"></tbody></table></div></div>
+</section>
+<section id="attendance" class="panel">
+<div class="card"><h2>Catat Hari Kerja</h2><form id="workForm">
+<input type="hidden" id="workEditId">
+<div class="grid">
+<div><label for="workProject">Proyek pekerjaan *</label><select id="workProject" required></select></div><div><label for="workWorker">Pekerja *</label><select id="workWorker" required></select></div>
+<div><label for="workDate">Tanggal *</label><input id="workDate" type="date" required></div>
+<div><label for="workType">Jam kerja *</label><select id="workType"><option value="day">Sehari penuh (1 hari)</option><option value="half">Setengah hari (0,5 hari)</option><option value="hour">Berdasarkan jam</option></select></div>
+<div id="hoursWrap" class="hidden"><label for="workHours">Jumlah jam kerja</label><input id="workHours" type="number" min="0.5" max="24" step="0.5" value="1"></div>
+<div><label for="overtimeHours">Lembur (jam)</label><input id="overtimeHours" type="number" min="0" max="24" step="0.5" value="0"></div>
+<div><label for="workNote">Keterangan (opsional)</label><input id="workNote" placeholder="Misalnya: panen, bongkar muat"></div>
+</div>
+<div class="actions"><button class="btn" type="submit" id="workSaveBtn">Simpan Hari Kerja</button><button class="btn secondary hidden" type="button" id="workCancel">Batal edit</button></div>
+<p class="note">Hari penuh = 1 × gaji harian; setengah hari = 0,5 × gaji harian; mode jam = jumlah jam × (gaji harian ÷ 8). Lembur dihitung terpisah.</p>
+</form></div>
+<div class="card"><h2>Pratinjau Catatan Terakhir</h2><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Pekerja</th><th>Jam kerja</th><th class="num">Lembur</th><th class="num">Total upah</th></tr></thead><tbody id="recentTable"></tbody></table></div></div>
+</section>
+<section id="slipPanel" class="panel">
+<div class="card no-print"><h2>Buat Slip Gaji</h2><div class="grid">
+<div><label for="slipProject">Proyek pekerjaan</label><select id="slipProject"></select></div><div><label for="slipWorker">Pekerja</label><select id="slipWorker"></select></div>
+<div><label for="slipStart">Dari tanggal</label><input id="slipStart" type="date"></div>
+<div><label for="slipEnd">Sampai tanggal</label><input id="slipEnd" type="date"></div>
+</div><div class="actions"><button class="btn" id="makeSlip">Tampilkan Slip</button><button class="btn green" id="printSlip">Cetak / Simpan PDF</button></div><p class="note">Pilih rentang tanggal. Gunakan fitur cetak browser untuk mencetak atau menyimpan sebagai PDF.</p></div>
+<div id="slipOutput" class="slip"><div class="empty">Pilih pekerja dan rentang tanggal, lalu tekan “Tampilkan Slip”.</div></div>
+</section>
+<section id="history" class="panel">
+<div class="card"><h2>Riwayat Hari Kerja</h2><div class="grid"><div><label for="historyProject">Filter proyek</label><select id="historyProject"><option value="all">Semua proyek</option></select></div><div><label for="historyWorker">Filter pekerja</label><select id="historyWorker"><option value="all">Semua pekerja</option></select></div><div><label for="historyMonth">Filter bulan</label><input id="historyMonth" type="month"></div></div><div class="actions"><button class="btn secondary" id="clearHistoryFilter">Reset filter</button><button class="btn secondary" id="exportCsv">Ekspor CSV</button></div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>Tanggal</th><th>Proyek</th><th>Pekerja</th><th>Jam kerja</th><th class="num">Lembur</th><th class="num">Upah kerja</th><th class="num">Upah lembur</th><th class="num">Total</th><th>Aksi</th></tr></thead><tbody id="historyTable"></tbody></table></div></div>
+</section>
+<section id="backup" class="panel">
+<div class="card"><h2>Backup & Restore Data</h2>
+<p>Backup menyimpan data pekerja dan seluruh catatan hari kerja menjadi file JSON. Simpan file tersebut di folder Download, Google Drive, atau tempat aman lainnya.</p>
+<div class="actions"><button class="btn" id="backupBtn">Unduh Backup JSON</button><button class="btn secondary" id="restorePickBtn">Pilih File Backup untuk Restore</button><input id="restoreFile" type="file" accept=".json,application/json" class="hidden"></div>
+<p class="note">Restore akan mengganti data pekerja dan catatan yang ada saat ini dengan data dari file backup. Buat backup terbaru terlebih dahulu agar data saat ini tidak hilang.</p>
+<div id="backupStatus" class="note" role="status"></div>
+</div>
+</section>
+<p class="note no-print">Data tersimpan di penyimpanan browser pada perangkat ini. Buat cadangan secara berkala; data tidak otomatis tersinkron ke perangkat lain.</p>
+</main>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
+const today=new Date(); const isoToday=new Date(today.getTime()-today.getTimezoneOffset()*60000).toISOString().slice(0,10);
+$('workDate').value=isoToday;$('slipEnd').value=isoToday;$('slipStart').value=isoToday.slice(0,7)+'-01';
+let workers=load('pekerja_app_workers'), records=load('pekerja_app_records'), projects=load('pekerja_app_projects');
+if(!projects.length) projects=[{id:'project-default',name:'Proyek Umum',note:'Proyek bawaan'}];
+records=records.map(r=>({...r,projectId:r.projectId||'project-default'}));
+function load(key){try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(e){return []}}
+function save(){localStorage.setItem('pekerja_app_workers',JSON.stringify(workers));localStorage.setItem('pekerja_app_records',JSON.stringify(records));localStorage.setItem('pekerja_app_projects',JSON.stringify(projects))}
+function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function worker(id){return workers.find(w=>w.id===id)}
+function workPay(r){const w=worker(r.workerId);if(!w)return 0;let base=r.type==='day'?Number(w.daily):r.type==='half'?Number(w.daily)*.5:Number(w.daily)/8*Number(r.hours||0);return base}
+function overtimePay(r){const w=worker(r.workerId);return w?Number(w.overtime)*Number(r.overtime||0):0}
+function total(r){return workPay(r)+overtimePay(r)}
+function typeLabel(r){return r.type==='day'?'Sehari penuh':r.type==='half'?'Setengah hari':`${r.hours} jam`}
+function render(){
+$('statWorkers').textContent=workers.length;$('statRecords').textContent=records.length;$('statWages').textContent=money(records.reduce((s,r)=>s+total(r),0));
+const options=workers.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('');
+const pOptions=projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+['workProject','slipProject'].forEach(k=>{const old=$(k).value;$(k).innerHTML=pOptions||'<option value="">Tambahkan proyek terlebih dahulu</option>';if(projects.some(p=>p.id===old))$(k).value=old});
+const oldP=$('historyProject').value||'all';$('historyProject').innerHTML='<option value="all">Semua proyek</option>'+pOptions;$('historyProject').value=(oldP==='all'||projects.some(p=>p.id===oldP))?oldP:'all';
+$('projectsTable').innerHTML=projects.map(p=>`<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.note||'-')}</td><td><button class="btn secondary small" data-edit-project="${p.id}">Edit</button> <button class="btn red small" data-delete-project="${p.id}">Hapus</button></td></tr>`).join('');
+['workWorker','slipWorker'].forEach(k=>{const old=$(k).value;$(k).innerHTML=options||'<option value="">Tambahkan pekerja terlebih dahulu</option>';if(workers.some(w=>w.id===old))$(k).value=old});
+const oldH=$('historyWorker').value;$('historyWorker').innerHTML='<option value="all">Semua pekerja</option>'+options;if(oldH==='all'||workers.some(w=>w.id===oldH))$('historyWorker').value=oldH;
+$('workersTable').innerHTML=workers.length?workers.map(w=>`<tr><td><b>${esc(w.name)}</b></td><td class="num">${money(w.daily)}</td><td class="num">${money(w.overtime)}</td><td><button class="btn secondary small" data-edit-worker="${w.id}">Edit</button> <button class="btn red small" data-delete-worker="${w.id}">Hapus</button></td></tr>`).join(''):'<tr><td colspan="4" class="empty">Belum ada data pekerja.</td></tr>';
+const sorted=[...records].sort((a,b)=>b.date.localeCompare(a.date));
+$('recentTable').innerHTML=sorted.slice(0,8).map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(worker(r.workerId)?.name||'Pekerja dihapus')}</td><td>${typeLabel(r)}</td><td class="num">${r.overtime||0} jam</td><td class="num">${money(total(r))}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Belum ada catatan kerja.</td></tr>';
+renderHistory();
+}
+function renderHistory(){
+const wid=$('historyWorker').value||'all', pid=$('historyProject').value||'all', month=$('historyMonth').value;
+const list=[...records].filter(r=>(wid==='all'||r.workerId===wid)&&(pid==='all'||r.projectId===pid)&&(!month||r.date.startsWith(month))).sort((a,b)=>b.date.localeCompare(a.date));
+$('historyTable').innerHTML=list.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(projects.find(p=>p.id===r.projectId)?.name||'Proyek dihapus')}</td><td>${esc(worker(r.workerId)?.name||'Pekerja dihapus')}</td><td>${typeLabel(r)}</td><td class="num">${r.overtime||0} jam</td><td class="num">${money(workPay(r))}</td><td class="num">${money(overtimePay(r))}</td><td class="num"><b>${money(total(r))}</b></td><td><button class="btn secondary small" data-edit-work="${r.id}">Edit</button> <button class="btn red small" data-delete-work="${r.id}">Hapus</button></td></tr>`).join('')||'<tr><td colspan="8" class="empty">Tidak ada catatan pada filter ini.</td></tr>';
+}
+function resetWorkerForm(){$('workerForm').reset();$('workerEditId').value='';$('workerFormTitle').textContent='Tambah Pekerja';$('workerSaveBtn').textContent='Simpan Pekerja';$('workerCancel').classList.add('hidden')}
+function resetWorkForm(){$('workForm').reset();$('workEditId').value='';$('workDate').value=isoToday;$('overtimeHours').value=0;$('workForm').querySelector('#workHours').value=1;$('workSaveBtn').textContent='Simpan Hari Kerja';$('workCancel').classList.add('hidden');toggleHours()}
+function toggleHours(){$('hoursWrap').classList.toggle('hidden',$('workType').value!=='hour')}
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===b.dataset.tab));if(b.dataset.tab==='slipPanel')makeSlip()}));
+$('workType').addEventListener('change',toggleHours);
+$('workerForm').addEventListener('submit',e=>{e.preventDefault();const edit=$('workerEditId').value;const obj={id:edit||id(),name:$('workerName').value.trim(),daily:Number($('dailyRate').value),overtime:Number($('overtimeRate').value)};if(!obj.name||obj.daily<0||obj.overtime<0)return alert('Periksa kembali data pekerja.');if(edit)workers=workers.map(w=>w.id===edit?obj:w);else workers.push(obj);save();resetWorkerForm();render();alert('Data pekerja berhasil disimpan.')});
+$('workerCancel').addEventListener('click',resetWorkerForm);
+$('workForm').addEventListener('submit',e=>{e.preventDefault();if(!workers.length)return alert('Tambahkan pekerja terlebih dahulu.');const edit=$('workEditId').value;const obj={id:edit||id(),projectId:$('workProject').value,workerId:$('workWorker').value,date:$('workDate').value,type:$('workType').value,hours:Number($('workHours').value||0),overtime:Number($('overtimeHours').value||0),note:$('workNote').value.trim()};if(!obj.projectId||!obj.workerId||!obj.date||obj.overtime<0||(obj.type==='hour'&&obj.hours<=0))return alert('Periksa kembali catatan kerja.');if(edit)records=records.map(r=>r.id===edit?obj:r);else records.push(obj);save();resetWorkForm();render();alert('Catatan hari kerja berhasil disimpan.')});
+$('workCancel').addEventListener('click',resetWorkForm);
+$('workersTable').addEventListener('click',e=>{const eb=e.target.closest('[data-edit-worker]'),db=e.target.closest('[data-delete-worker]');if(eb){const w=worker(eb.dataset.editWorker);$('workerEditId').value=w.id;$('workerName').value=w.name;$('dailyRate').value=w.daily;$('overtimeRate').value=w.overtime;$('workerFormTitle').textContent='Edit Pekerja';$('workerSaveBtn').textContent='Simpan Perubahan';$('workerCancel').classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'})}if(db){const w=worker(db.dataset.deleteWorker);if(confirm(`Hapus pekerja "${w.name}"? Catatan kerja lama tetap disimpan, tetapi upahnya tidak dapat dihitung setelah pekerja dihapus.`)){workers=workers.filter(x=>x.id!==w.id);save();render()}}});
+function editWork(r){$('workEditId').value=r.id;$('workProject').value=r.projectId||'project-default';$('workWorker').value=r.workerId;$('workDate').value=r.date;$('workType').value=r.type;$('workHours').value=r.hours||1;$('overtimeHours').value=r.overtime||0;$('workNote').value=r.note||'';$('workSaveBtn').textContent='Simpan Perubahan';$('workCancel').classList.remove('hidden');toggleHours();document.querySelector('[data-tab="attendance"]').click();window.scrollTo({top:0,behavior:'smooth'})}
+function handleRecordActions(e){const eb=e.target.closest('[data-edit-work]'),db=e.target.closest('[data-delete-work]');if(eb){const r=records.find(x=>x.id===eb.dataset.editWork);if(r)editWork(r)}if(db&&confirm('Hapus catatan hari kerja ini?')){records=records.filter(r=>r.id!==db.dataset.deleteWork);save();render()}}
+$('historyTable').addEventListener('click',handleRecordActions);$('recentTable').addEventListener('click',handleRecordActions);
+$('historyWorker').addEventListener('change',renderHistory);$('historyMonth').addEventListener('change',renderHistory);
+$('clearHistoryFilter').addEventListener('click',()=>{$('historyWorker').value='all';$('historyMonth').value='';renderHistory()});
+function makeSlip(){
+const wid=$('slipWorker').value,pid=$('slipProject').value,start=$('slipStart').value,end=$('slipEnd').value;const w=worker(wid);
+if(!w){$('slipOutput').innerHTML='<div class="empty">Tambahkan pekerja terlebih dahulu.</div>';return}
+if(!start||!end||start>end){$('slipOutput').innerHTML='<div class="empty">Rentang tanggal tidak valid.</div>';return}
+const list=records.filter(r=>r.workerId===wid&&r.projectId===pid&&r.date>=start&&r.date<=end).sort((a,b)=>a.date.localeCompare(b.date));
+const base=list.reduce((s,r)=>s+workPay(r),0),ot=list.reduce((s,r)=>s+overtimePay(r),0),days=list.reduce((s,r)=>s+(r.type==='day'?1:r.type==='half'?.5:Number(r.hours||0)/8),0),oth=list.reduce((s,r)=>s+Number(r.overtime||0),0);
+$('slipOutput').innerHTML=`<div class="slip-head"><div><h2>SLIP GAJI</h2><div>Rincian upah pekerja</div></div><div class="right"><b>Periode</b><br>${esc(start)} s.d. ${esc(end)}<br><small>Dicetak: ${isoToday}</small></div></div>
+<div class="grid"><div><label>Proyek pekerjaan</label><b>${esc(projects.find(p=>p.id===pid)?.name||"-")}</b></div><div><label>Nama pekerja</label><b>${esc(w.name)}</b></div><div><label>Tarif gaji harian</label><b>${money(w.daily)}</b></div></div>
+<div class="table-wrap" style="margin-top:18px"><table><thead><tr><th>Tanggal</th><th>Jenis kerja</th><th class="num">Lembur</th><th class="num">Upah kerja</th><th class="num">Upah lembur</th><th class="num">Jumlah</th></tr></thead><tbody>${list.map(r=>`<tr><td>${esc(r.date)}</td><td>${typeLabel(r)}${r.note?'<br><small>'+esc(r.note)+'</small>':''}</td><td class="num">${r.overtime||0} jam</td><td class="num">${money(workPay(r))}</td><td class="num">${money(overtimePay(r))}</td><td class="num">${money(total(r))}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">Tidak ada catatan kerja pada periode ini.</td></tr>'}</tbody><tfoot><tr><th colspan="2">Total</th><th class="num">${oth} jam</th><th class="num">${money(base)}</th><th class="num">${money(ot)}</th><th class="num">${money(base+ot)}</th></tr></tfoot></table></div>
+<div class="grid three" style="margin-top:12px"><div><label>Hari ekuivalen</label><b>${Number(days.toFixed(2))} hari</b></div><div><label>Total lembur</label><b>${oth} jam</b></div><div><label>Jumlah catatan</label><b>${list.length}</b></div></div>
+<div class="slip-total"><div>Total gaji diterima</div><strong>${money(base+ot)}</strong></div>
+<div style="display:flex;justify-content:space-between;gap:25px;margin-top:38px;text-align:center"><div style="width:45%">Penerima,<br><br><br><u>${esc(w.name)}</u></div><div style="width:45%">Pemberi kerja,<br><br><br><u>_____________________</u></div></div>`;
+}
+$('makeSlip').addEventListener('click',makeSlip);$('printSlip').addEventListener('click',()=>{makeSlip();if(worker($('slipWorker').value))window.print()});
+$('exportCsv').addEventListener('click',()=>{const wid=$('historyWorker').value||'all',pid=$('historyProject').value||'all',month=$('historyMonth').value;const list=records.filter(r=>(wid==='all'||r.workerId===wid)&&(pid==='all'||r.projectId===pid)&&(!month||r.date.startsWith(month))).sort((a,b)=>a.date.localeCompare(b.date));const rows=[['Tanggal','Nama pekerja','Jam kerja','Lembur (jam)','Upah kerja','Upah lembur','Total','Keterangan'],...list.map(r=>[r.date,worker(r.workerId)?.name||'',typeLabel(r),r.overtime||0,workPay(r),overtimePay(r),total(r),r.note||''])];const csv=rows.map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='riwayat-hari-kerja.csv';a.click();URL.revokeObjectURL(a.href)});
+$('historyProject').addEventListener('change',renderHistory);
+$('projectForm').addEventListener('submit',e=>{e.preventDefault();const edit=$('projectEditId').value;const obj={id:edit||id(),name:$('projectName').value.trim(),note:$('projectNote').value.trim()};if(!obj.name)return;if(projects.some(p=>p.id!==edit&&p.name.toLowerCase()===obj.name.toLowerCase()))return alert('Nama proyek sudah ada.');if(edit)projects=projects.map(p=>p.id===edit?obj:p);else projects.push(obj);save();$('projectForm').reset();$('projectEditId').value='';$('projectSaveBtn').textContent='Simpan Proyek';$('projectCancel').classList.add('hidden');render();alert('Proyek berhasil disimpan.')});
+$('projectCancel').addEventListener('click',()=>{$('projectForm').reset();$('projectEditId').value='';$('projectSaveBtn').textContent='Simpan Proyek';$('projectCancel').classList.add('hidden')});
+$('projectsTable').addEventListener('click',e=>{const eb=e.target.closest('[data-edit-project]'),db=e.target.closest('[data-delete-project]');if(eb){const p=projects.find(x=>x.id===eb.dataset.editProject);$('projectEditId').value=p.id;$('projectName').value=p.name;$('projectNote').value=p.note||'';$('projectSaveBtn').textContent='Simpan Perubahan';$('projectCancel').classList.remove('hidden')}if(db){const p=projects.find(x=>x.id===db.dataset.deleteProject);if(records.some(r=>r.projectId===p.id))return alert('Proyek ini masih memiliki catatan kerja. Proyek tidak dapat dihapus.');if(confirm(`Hapus proyek "${p.name}"?`)){projects=projects.filter(x=>x.id!==p.id);save();render()}}});
+$('backupBtn').addEventListener('click',()=>{
+ const payload={app:'Aplikasi Data Pekerja & Slip Gaji',version:2,createdAt:new Date().toISOString(),workers,projects,records};
+ const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+ const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='backup-data-pekerja-'+isoToday+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ $('backupStatus').textContent='File backup dibuat. Periksa folder Download perangkat Anda.';
+});
+$('restorePickBtn').addEventListener('click',()=>$('restoreFile').click());
+$('restoreFile').addEventListener('change',async e=>{
+ const file=e.target.files&&e.target.files[0];if(!file)return;
+ try{
+  const data=JSON.parse(await file.text());
+  if(!data||!Array.isArray(data.workers)||!Array.isArray(data.records))throw new Error('Format file tidak sesuai.');
+  if(!confirm('Restore akan mengganti semua data pekerja dan catatan kerja saat ini. Lanjutkan?')){e.target.value='';return}
+  workers=data.workers;records=data.records;projects=Array.isArray(data.projects)?data.projects:[{id:'project-default',name:'Proyek Umum',note:'Proyek bawaan'}];records=records.map(r=>({...r,projectId:r.projectId||(projects[0]?.id||'project-default')}));save();resetWorkerForm();resetWorkForm();render();
+  $('backupStatus').textContent='Restore berhasil. Data dari file backup sudah dimuat.';
+ }catch(err){alert('Gagal restore: file tidak valid atau rusak. Pilih file backup JSON dari aplikasi ini.');}
+ e.target.value='';
+});
+render();
+})();
+</script>
+</body>
+</html>
