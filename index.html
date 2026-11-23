@@ -23,9 +23,26 @@ input:focus,select:focus{outline:2px solid #bfdbfe;border-color:#60a5fa}
 .note{color:var(--muted);font-size:13px;margin:8px 0 0}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}.stat{background:#fff;border:1px solid var(--line);border-radius:13px;padding:14px}.stat span{display:block;color:var(--muted);font-size:12px}.stat strong{display:block;font-size:clamp(17px,3vw,23px);margin-top:5px}
 .table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:620px}th,td{text-align:left;padding:10px 9px;border-bottom:1px solid #e8edf4;font-size:13px;vertical-align:middle}th{background:#f5f8fc;color:#475569;font-weight:750}td.num,th.num{text-align:right}.empty{text-align:center;padding:24px;color:var(--muted)}
 .slip{max-width:720px;margin:0 auto;border:1px solid var(--line);border-radius:12px;padding:22px;background:white}.slip-head{display:flex;justify-content:space-between;gap:15px;border-bottom:2px solid var(--blue);padding-bottom:14px;margin-bottom:15px}.slip-head h2{color:var(--blue);margin:0}.slip-total{background:var(--light);padding:15px;border-radius:10px;margin-top:14px}.slip-total strong{font-size:23px;color:var(--blue)}.right{text-align:right}.hidden{display:none!important}
+.worker-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:7px}
+.worker-choice{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;cursor:pointer}
+.worker-choice input{width:18px;height:18px;flex:0 0 auto}
+.worker-choice span{font-weight:600}
+.worker-choice:has(input:checked){border-color:var(--blue2);background:var(--light)}
+.worker-select-box{grid-column:1/-1}
+
 @media(max-width:650px){main{margin-top:13px}.grid,.grid.three{grid-template-columns:1fr}.stats{grid-template-columns:1fr}.card{padding:14px}.slip{padding:14px}.slip-head{flex-direction:column}}
 @media print{body{background:white;font-size:12px}header,.tabs,.no-print,.panel:not(#slipPanel),#slipPanel>h2,#slipPanel>.card{display:none!important}main{margin:0;padding:0;max-width:none}#slipPanel{display:block!important}.slip{border:0;border-radius:0;padding:0;max-width:none}.slip table{min-width:0}th,td{font-size:11px;padding:7px}.slip-total{break-inside:avoid}}
 </style>
+
+<link rel="manifest" href="./manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Data Pekerja">
+<meta name="theme-color" content="#123d70">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+
 </head>
 <body>
 <header><h1>Data Pekerja & Penggajian</h1><p>Kelola pekerja, catat hari kerja dan lembur, lalu cetak slip gaji.</p></header>
@@ -61,7 +78,8 @@ input:focus,select:focus{outline:2px solid #bfdbfe;border-color:#60a5fa}
 <div class="card"><h2>Catat Hari Kerja</h2><form id="workForm">
 <input type="hidden" id="workEditId">
 <div class="grid">
-<div><label for="workProject">Proyek pekerjaan *</label><select id="workProject" required></select></div><div><label for="workWorker">Pekerja *</label><select id="workWorker" required></select></div>
+<div><label for="workProject">Proyek pekerjaan *</label><select id="workProject" required></select></div>
+<div class="worker-select-box"><label>Pilih pekerja * (bisa lebih dari satu)</label><div id="workerChoices" class="worker-choices"></div><p class="note" id="workerChoiceNote">Centang semua pekerja yang masuk kerja pada tanggal ini. Tarif upah dihitung otomatis sesuai data masing-masing pekerja.</p></div>
 <div><label for="workDate">Tanggal *</label><input id="workDate" type="date" required></div>
 <div><label for="workType">Jam kerja *</label><select id="workType"><option value="day">Sehari penuh (1 hari)</option><option value="half">Setengah hari (0,5 hari)</option><option value="hour">Berdasarkan jam</option></select></div>
 <div id="hoursWrap" class="hidden"><label for="workHours">Jumlah jam kerja</label><input id="workHours" type="number" min="0.5" max="24" step="0.5" value="1"></div>
@@ -119,7 +137,10 @@ const pOptions=projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`
 ['workProject','slipProject'].forEach(k=>{const old=$(k).value;$(k).innerHTML=pOptions||'<option value="">Tambahkan proyek terlebih dahulu</option>';if(projects.some(p=>p.id===old))$(k).value=old});
 const oldP=$('historyProject').value||'all';$('historyProject').innerHTML='<option value="all">Semua proyek</option>'+pOptions;$('historyProject').value=(oldP==='all'||projects.some(p=>p.id===oldP))?oldP:'all';
 $('projectsTable').innerHTML=projects.map(p=>`<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.note||'-')}</td><td><button class="btn secondary small" data-edit-project="${p.id}">Edit</button> <button class="btn red small" data-delete-project="${p.id}">Hapus</button></td></tr>`).join('');
-['workWorker','slipWorker'].forEach(k=>{const old=$(k).value;$(k).innerHTML=options||'<option value="">Tambahkan pekerja terlebih dahulu</option>';if(workers.some(w=>w.id===old))$(k).value=old});
+const oldSlipWorker=$('slipWorker').value;
+$('slipWorker').innerHTML=options||'<option value="">Tambahkan pekerja terlebih dahulu</option>';
+if(workers.some(w=>w.id===oldSlipWorker))$('slipWorker').value=oldSlipWorker;
+$('workerChoices').innerHTML=workers.length?workers.map(w=>`<label class="worker-choice"><input type="checkbox" data-worker-check value="${w.id}"><span>${esc(w.name)}</span></label>`).join(''):'<p class="note">Belum ada pekerja. Tambahkan melalui menu Data Pekerja.</p>';
 const oldH=$('historyWorker').value;$('historyWorker').innerHTML='<option value="all">Semua pekerja</option>'+options;if(oldH==='all'||workers.some(w=>w.id===oldH))$('historyWorker').value=oldH;
 $('workersTable').innerHTML=workers.length?workers.map(w=>`<tr><td><b>${esc(w.name)}</b></td><td class="num">${money(w.daily)}</td><td class="num">${money(w.overtime)}</td><td><button class="btn secondary small" data-edit-worker="${w.id}">Edit</button> <button class="btn red small" data-delete-worker="${w.id}">Hapus</button></td></tr>`).join(''):'<tr><td colspan="4" class="empty">Belum ada data pekerja.</td></tr>';
 const sorted=[...records].sort((a,b)=>b.date.localeCompare(a.date));
@@ -132,16 +153,16 @@ const list=[...records].filter(r=>(wid==='all'||r.workerId===wid)&&(pid==='all'|
 $('historyTable').innerHTML=list.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(projects.find(p=>p.id===r.projectId)?.name||'Proyek dihapus')}</td><td>${esc(worker(r.workerId)?.name||'Pekerja dihapus')}</td><td>${typeLabel(r)}</td><td class="num">${r.overtime||0} jam</td><td class="num">${money(workPay(r))}</td><td class="num">${money(overtimePay(r))}</td><td class="num"><b>${money(total(r))}</b></td><td><button class="btn secondary small" data-edit-work="${r.id}">Edit</button> <button class="btn red small" data-delete-work="${r.id}">Hapus</button></td></tr>`).join('')||'<tr><td colspan="8" class="empty">Tidak ada catatan pada filter ini.</td></tr>';
 }
 function resetWorkerForm(){$('workerForm').reset();$('workerEditId').value='';$('workerFormTitle').textContent='Tambah Pekerja';$('workerSaveBtn').textContent='Simpan Pekerja';$('workerCancel').classList.add('hidden')}
-function resetWorkForm(){$('workForm').reset();$('workEditId').value='';$('workDate').value=isoToday;$('overtimeHours').value=0;$('workForm').querySelector('#workHours').value=1;$('workSaveBtn').textContent='Simpan Hari Kerja';$('workCancel').classList.add('hidden');toggleHours()}
+function resetWorkForm(){$('workForm').reset();$('workEditId').value='';$('workDate').value=isoToday;$('overtimeHours').value=0;$('workHours').value=1;$('workSaveBtn').textContent='Simpan Hari Kerja';$('workCancel').classList.add('hidden');$('workerChoiceNote').textContent='Centang semua pekerja yang masuk kerja pada tanggal ini. Tarif upah dihitung otomatis sesuai data masing-masing pekerja.';document.querySelectorAll('[data-worker-check]').forEach(c=>{c.checked=false;c.disabled=false});toggleHours()}
 function toggleHours(){$('hoursWrap').classList.toggle('hidden',$('workType').value!=='hour')}
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===b.dataset.tab));if(b.dataset.tab==='slipPanel')makeSlip()}));
 $('workType').addEventListener('change',toggleHours);
 $('workerForm').addEventListener('submit',e=>{e.preventDefault();const edit=$('workerEditId').value;const obj={id:edit||id(),name:$('workerName').value.trim(),daily:Number($('dailyRate').value),overtime:Number($('overtimeRate').value)};if(!obj.name||obj.daily<0||obj.overtime<0)return alert('Periksa kembali data pekerja.');if(edit)workers=workers.map(w=>w.id===edit?obj:w);else workers.push(obj);save();resetWorkerForm();render();alert('Data pekerja berhasil disimpan.')});
 $('workerCancel').addEventListener('click',resetWorkerForm);
-$('workForm').addEventListener('submit',e=>{e.preventDefault();if(!workers.length)return alert('Tambahkan pekerja terlebih dahulu.');const edit=$('workEditId').value;const obj={id:edit||id(),projectId:$('workProject').value,workerId:$('workWorker').value,date:$('workDate').value,type:$('workType').value,hours:Number($('workHours').value||0),overtime:Number($('overtimeHours').value||0),note:$('workNote').value.trim()};if(!obj.projectId||!obj.workerId||!obj.date||obj.overtime<0||(obj.type==='hour'&&obj.hours<=0))return alert('Periksa kembali catatan kerja.');if(edit)records=records.map(r=>r.id===edit?obj:r);else records.push(obj);save();resetWorkForm();render();alert('Catatan hari kerja berhasil disimpan.')});
+$('workForm').addEventListener('submit',e=>{e.preventDefault();if(!workers.length)return alert('Tambahkan pekerja terlebih dahulu.');const edit=$('workEditId').value;const selected=[...document.querySelectorAll('[data-worker-check]:checked')].map(c=>c.value);const common={projectId:$('workProject').value,date:$('workDate').value,type:$('workType').value,hours:Number($('workHours').value||0),overtime:Number($('overtimeHours').value||0),note:$('workNote').value.trim()};if(!common.projectId||!common.date||!selected.length||common.overtime<0||(common.type==='hour'&&common.hours<=0))return alert('Pilih minimal satu pekerja dan periksa kembali catatan kerja.');if(edit){if(selected.length!==1)return alert('Saat mengedit, pilih satu pekerja saja.');records=records.map(r=>r.id===edit?{...r,...common,workerId:selected[0]}:r)}else{selected.forEach(workerId=>records.push({id:id(),...common,workerId}))}save();const count=selected.length;resetWorkForm();render();alert(edit?'Catatan hari kerja berhasil diperbarui.':`${count} catatan hari kerja berhasil disimpan.`)});
 $('workCancel').addEventListener('click',resetWorkForm);
 $('workersTable').addEventListener('click',e=>{const eb=e.target.closest('[data-edit-worker]'),db=e.target.closest('[data-delete-worker]');if(eb){const w=worker(eb.dataset.editWorker);$('workerEditId').value=w.id;$('workerName').value=w.name;$('dailyRate').value=w.daily;$('overtimeRate').value=w.overtime;$('workerFormTitle').textContent='Edit Pekerja';$('workerSaveBtn').textContent='Simpan Perubahan';$('workerCancel').classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'})}if(db){const w=worker(db.dataset.deleteWorker);if(confirm(`Hapus pekerja "${w.name}"? Catatan kerja lama tetap disimpan, tetapi upahnya tidak dapat dihitung setelah pekerja dihapus.`)){workers=workers.filter(x=>x.id!==w.id);save();render()}}});
-function editWork(r){$('workEditId').value=r.id;$('workProject').value=r.projectId||'project-default';$('workWorker').value=r.workerId;$('workDate').value=r.date;$('workType').value=r.type;$('workHours').value=r.hours||1;$('overtimeHours').value=r.overtime||0;$('workNote').value=r.note||'';$('workSaveBtn').textContent='Simpan Perubahan';$('workCancel').classList.remove('hidden');toggleHours();document.querySelector('[data-tab="attendance"]').click();window.scrollTo({top:0,behavior:'smooth'})}
+function editWork(r){$('workEditId').value=r.id;$('workProject').value=r.projectId||'project-default';document.querySelectorAll('[data-worker-check]').forEach(c=>{c.checked=c.value===r.workerId;c.disabled=c.value!==r.workerId});$('workerChoiceNote').textContent='Mode edit: pekerja pada catatan ini dikunci. Untuk mengganti pekerja, batalkan edit lalu catat hari kerja baru.';$('workDate').value=r.date;$('workType').value=r.type;$('workHours').value=r.hours||1;$('overtimeHours').value=r.overtime||0;$('workNote').value=r.note||'';$('workSaveBtn').textContent='Simpan Perubahan';$('workCancel').classList.remove('hidden');toggleHours();document.querySelector('[data-tab="attendance"]').click();window.scrollTo({top:0,behavior:'smooth'})}
 function handleRecordActions(e){const eb=e.target.closest('[data-edit-work]'),db=e.target.closest('[data-delete-work]');if(eb){const r=records.find(x=>x.id===eb.dataset.editWork);if(r)editWork(r)}if(db&&confirm('Hapus catatan hari kerja ini?')){records=records.filter(r=>r.id!==db.dataset.deleteWork);save();render()}}
 $('historyTable').addEventListener('click',handleRecordActions);$('recentTable').addEventListener('click',handleRecordActions);
 $('historyWorker').addEventListener('change',renderHistory);$('historyMonth').addEventListener('change',renderHistory);
@@ -183,6 +204,16 @@ $('restoreFile').addEventListener('change',async e=>{
  }catch(err){alert('Gagal restore: file tidak valid atau rusak. Pilih file backup JSON dari aplikasi ini.');}
  e.target.value='';
 });
+
+// PWA: daftarkan service worker untuk instalasi dan akses offline.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(err => {
+      console.warn('Service Worker gagal didaftarkan:', err);
+    });
+  });
+}
+
 render();
 })();
 </script>
