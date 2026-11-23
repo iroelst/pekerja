@@ -51,6 +51,7 @@ input:focus,select:focus{outline:2px solid #bfdbfe;border-color:#60a5fa}
 <button class="tab" data-tab="projects">🏗️ Proyek</button>
 <button class="tab active" data-tab="workers">👷 Data Pekerja</button>
 <button class="tab" data-tab="attendance">📅 Hari Kerja</button>
+<button class="tab" data-tab="payments">💰 Pembayaran Gaji</button>
 <button class="tab" data-tab="slipPanel">🧾 Slip Gaji</button>
 <button class="tab" data-tab="history">📋 Riwayat</button>
 <button class="tab" data-tab="backup">💾 Backup & Restore</button>
@@ -91,6 +92,20 @@ input:focus,select:focus{outline:2px solid #bfdbfe;border-color:#60a5fa}
 </form></div>
 <div class="card"><h2>Pratinjau Catatan Terakhir</h2><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Pekerja</th><th>Jam kerja</th><th class="num">Lembur</th><th class="num">Total upah</th></tr></thead><tbody id="recentTable"></tbody></table></div></div>
 </section>
+<section id="payments" class="panel">
+<div class="card"><h2>Pembayaran Gaji</h2><div class="grid">
+<div><label for="payProject">Proyek pekerjaan *</label><select id="payProject"></select></div>
+<div><label for="payStart">Dari tanggal *</label><input id="payStart" type="date"></div>
+<div><label for="payEnd">Sampai tanggal *</label><input id="payEnd" type="date"></div>
+</div><div class="actions"><button class="btn" type="button" id="loadPayList">Tampilkan Upah</button></div>
+<p class="note">Pilih proyek dan periode. Hanya catatan yang belum dibayar yang dihitung.</p></div>
+<div class="card"><h3>Daftar upah pekerja</h3><div class="table-wrap"><table><thead><tr><th>Pilih</th><th>Pekerja</th><th class="num">Catatan</th><th class="num">Total upah</th></tr></thead><tbody id="payWorkersTable"><tr><td colspan="4" class="empty">Pilih proyek dan periode.</td></tr></tbody></table></div>
+<div class="slip-total"><div>Total belum dibayar</div><strong id="payGrandTotal">Rp0</strong></div>
+<div class="grid" style="margin-top:14px"><div><label for="payDate">Tanggal pembayaran *</label><input id="payDate" type="date"></div><div><label for="payNote">Keterangan</label><input id="payNote" placeholder="Keterangan pembayaran"></div></div>
+<div class="actions"><button class="btn green" type="button" id="paySelectedBtn">Bayar pekerja terpilih</button><button class="btn" type="button" id="payAllBtn">Bayar semua</button></div>
+</div>
+<div class="card"><h3>Riwayat pembayaran</h3><div class="table-wrap"><table><thead><tr><th>Tanggal bayar</th><th>Proyek</th><th>Periode kerja</th><th>Pekerja</th><th class="num">Total</th><th>Keterangan</th></tr></thead><tbody id="paymentsHistoryTable"></tbody></table></div></div>
+</section>
 <section id="slipPanel" class="panel">
 <div class="card no-print"><h2>Buat Slip Gaji</h2><div class="grid">
 <div><label for="slipProject">Proyek pekerjaan</label><select id="slipProject"></select></div><div><label for="slipWorker">Pekerja</label><select id="slipWorker"></select></div>
@@ -100,7 +115,7 @@ input:focus,select:focus{outline:2px solid #bfdbfe;border-color:#60a5fa}
 <div id="slipOutput" class="slip"><div class="empty">Pilih pekerja dan rentang tanggal, lalu tekan “Tampilkan Slip”.</div></div>
 </section>
 <section id="history" class="panel">
-<div class="card"><h2>Riwayat Hari Kerja</h2><div class="grid"><div><label for="historyProject">Filter proyek</label><select id="historyProject"><option value="all">Semua proyek</option></select></div><div><label for="historyWorker">Filter pekerja</label><select id="historyWorker"><option value="all">Semua pekerja</option></select></div><div><label for="historyMonth">Filter bulan</label><input id="historyMonth" type="month"></div></div><div class="actions"><button class="btn secondary" id="clearHistoryFilter">Reset filter</button><button class="btn secondary" id="exportCsv">Ekspor CSV</button></div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>Tanggal</th><th>Proyek</th><th>Pekerja</th><th>Jam kerja</th><th class="num">Lembur</th><th class="num">Upah kerja</th><th class="num">Upah lembur</th><th class="num">Total</th><th>Aksi</th></tr></thead><tbody id="historyTable"></tbody></table></div></div>
+<div class="card"><h2>Riwayat Hari Kerja</h2><div class="grid"><div><label for="historyProject">Filter proyek</label><select id="historyProject"><option value="all">Semua proyek</option></select></div><div><label for="historyWorker">Filter pekerja</label><select id="historyWorker"><option value="all">Semua pekerja</option></select></div><div><label for="historyMonth">Filter bulan</label><input id="historyMonth" type="month"></div></div><div class="actions"><button class="btn secondary" id="clearHistoryFilter">Reset filter</button><button class="btn secondary" id="exportCsv">Ekspor CSV</button></div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>Tanggal</th><th>Proyek</th><th>Pekerja</th><th>Jam kerja</th><th class="num">Lembur</th><th class="num">Upah kerja</th><th class="num">Upah lembur</th><th class="num">Total</th><th>Status bayar</th><th>Aksi</th></tr></thead><tbody id="historyTable"></tbody></table></div></div>
 </section>
 <section id="backup" class="panel">
 <div class="card"><h2>Backup & Restore Data</h2>
@@ -117,12 +132,12 @@ input:focus,select:focus{outline:2px solid #bfdbfe;border-color:#60a5fa}
 const $=id=>document.getElementById(id);
 const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const today=new Date(); const isoToday=new Date(today.getTime()-today.getTimezoneOffset()*60000).toISOString().slice(0,10);
-$('workDate').value=isoToday;$('slipEnd').value=isoToday;$('slipStart').value=isoToday.slice(0,7)+'-01';
-let workers=load('pekerja_app_workers'), records=load('pekerja_app_records'), projects=load('pekerja_app_projects');
+$('workDate').value=isoToday;$('payDate').value=isoToday;$('slipEnd').value=isoToday;$('slipStart').value=isoToday.slice(0,7)+'-01';
+let workers=load('pekerja_app_workers'), records=load('pekerja_app_records'), projects=load('pekerja_app_projects'), payments=load('pekerja_app_payments');
 if(!projects.length) projects=[{id:'project-default',name:'Proyek Umum',note:'Proyek bawaan'}];
 records=records.map(r=>({...r,projectId:r.projectId||'project-default'}));
 function load(key){try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(e){return []}}
-function save(){localStorage.setItem('pekerja_app_workers',JSON.stringify(workers));localStorage.setItem('pekerja_app_records',JSON.stringify(records));localStorage.setItem('pekerja_app_projects',JSON.stringify(projects))}
+function save(){localStorage.setItem('pekerja_app_workers',JSON.stringify(workers));localStorage.setItem('pekerja_app_records',JSON.stringify(records));localStorage.setItem('pekerja_app_projects',JSON.stringify(projects));localStorage.setItem('pekerja_app_payments',JSON.stringify(payments))}
 function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function worker(id){return workers.find(w=>w.id===id)}
@@ -134,7 +149,7 @@ function render(){
 $('statWorkers').textContent=workers.length;$('statRecords').textContent=records.length;$('statWages').textContent=money(records.reduce((s,r)=>s+total(r),0));
 const options=workers.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('');
 const pOptions=projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
-['workProject','slipProject'].forEach(k=>{const old=$(k).value;$(k).innerHTML=pOptions||'<option value="">Tambahkan proyek terlebih dahulu</option>';if(projects.some(p=>p.id===old))$(k).value=old});
+['workProject','slipProject','payProject'].forEach(k=>{const old=$(k).value;$(k).innerHTML=pOptions||'<option value="">Tambahkan proyek terlebih dahulu</option>';if(projects.some(p=>p.id===old))$(k).value=old});
 const oldP=$('historyProject').value||'all';$('historyProject').innerHTML='<option value="all">Semua proyek</option>'+pOptions;$('historyProject').value=(oldP==='all'||projects.some(p=>p.id===oldP))?oldP:'all';
 $('projectsTable').innerHTML=projects.map(p=>`<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.note||'-')}</td><td><button class="btn secondary small" data-edit-project="${p.id}">Edit</button> <button class="btn red small" data-delete-project="${p.id}">Hapus</button></td></tr>`).join('');
 const oldSlipWorker=$('slipWorker').value;
@@ -145,13 +160,50 @@ const oldH=$('historyWorker').value;$('historyWorker').innerHTML='<option value=
 $('workersTable').innerHTML=workers.length?workers.map(w=>`<tr><td><b>${esc(w.name)}</b></td><td class="num">${money(w.daily)}</td><td class="num">${money(w.overtime)}</td><td><button class="btn secondary small" data-edit-worker="${w.id}">Edit</button> <button class="btn red small" data-delete-worker="${w.id}">Hapus</button></td></tr>`).join(''):'<tr><td colspan="4" class="empty">Belum ada data pekerja.</td></tr>';
 const sorted=[...records].sort((a,b)=>b.date.localeCompare(a.date));
 $('recentTable').innerHTML=sorted.slice(0,8).map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(worker(r.workerId)?.name||'Pekerja dihapus')}</td><td>${typeLabel(r)}</td><td class="num">${r.overtime||0} jam</td><td class="num">${money(total(r))}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Belum ada catatan kerja.</td></tr>';
-renderHistory();
+renderHistory();renderPaymentsHistory();
 }
 function renderHistory(){
 const wid=$('historyWorker').value||'all', pid=$('historyProject').value||'all', month=$('historyMonth').value;
 const list=[...records].filter(r=>(wid==='all'||r.workerId===wid)&&(pid==='all'||r.projectId===pid)&&(!month||r.date.startsWith(month))).sort((a,b)=>b.date.localeCompare(a.date));
-$('historyTable').innerHTML=list.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(projects.find(p=>p.id===r.projectId)?.name||'Proyek dihapus')}</td><td>${esc(worker(r.workerId)?.name||'Pekerja dihapus')}</td><td>${typeLabel(r)}</td><td class="num">${r.overtime||0} jam</td><td class="num">${money(workPay(r))}</td><td class="num">${money(overtimePay(r))}</td><td class="num"><b>${money(total(r))}</b></td><td><button class="btn secondary small" data-edit-work="${r.id}">Edit</button> <button class="btn red small" data-delete-work="${r.id}">Hapus</button></td></tr>`).join('')||'<tr><td colspan="8" class="empty">Tidak ada catatan pada filter ini.</td></tr>';
+$('historyTable').innerHTML=list.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(projects.find(p=>p.id===r.projectId)?.name||'Proyek dihapus')}</td><td>${esc(worker(r.workerId)?.name||'Pekerja dihapus')}</td><td>${typeLabel(r)}</td><td class="num">${r.overtime||0} jam</td><td class="num">${money(workPay(r))}</td><td class="num">${money(overtimePay(r))}</td><td class="num"><b>${money(total(r))}</b></td><td>${r.paidPaymentId?'<b style="color:var(--green)">Sudah dibayar</b>':'Belum dibayar'}</td><td>${r.paidPaymentId?'<span class="note">Terkunci</span>':`<button class="btn secondary small" data-edit-work="${r.id}">Edit</button> <button class="btn red small" data-delete-work="${r.id}">Hapus</button>`}</td></tr>`).join('')||'<tr><td colspan="10" class="empty">Tidak ada catatan pada filter ini.</td></tr>';
 }
+
+function paymentCandidates(){
+ const pid=$('payProject').value,start=$('payStart').value,end=$('payEnd').value;
+ if(!pid||!start||!end||start>end)return [];
+ return records.filter(r=>r.projectId===pid&&r.date>=start&&r.date<=end&&!r.paidPaymentId);
+}
+function renderPaymentList(){
+ const groups=new Map();
+ paymentCandidates().forEach(r=>{if(!groups.has(r.workerId))groups.set(r.workerId,[]);groups.get(r.workerId).push(r)});
+ $('payWorkersTable').innerHTML=[...groups.entries()].map(([wid,rs])=>{
+  const base=rs.reduce((a,r)=>a+workPay(r),0),ot=rs.reduce((a,r)=>a+overtimePay(r),0);
+  return `<tr><td><input type="checkbox" data-pay-worker="${wid}" checked></td><td>${esc(worker(wid)?.name||'Pekerja dihapus')}</td><td class="num">${rs.length}</td><td class="num"><b>${money(base+ot)}</b></td></tr>`;
+ }).join('')||'<tr><td colspan="4" class="empty">Tidak ada upah belum dibayar pada periode ini.</td></tr>';
+ $('payGrandTotal').textContent=money(paymentCandidates().reduce((a,r)=>a+total(r),0));
+}
+function renderPaymentsHistory(){
+ $('paymentsHistoryTable').innerHTML=payments.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(p=>{
+  const names=(p.workerIds||[]).map(wid=>worker(wid)?.name||'Pekerja dihapus').join(', ');
+  return `<tr><td>${esc(p.date)}</td><td>${esc(projects.find(x=>x.id===p.projectId)?.name||'Proyek dihapus')}</td><td>${esc(p.start)} s.d. ${esc(p.end)}</td><td>${esc(names)}</td><td class="num"><b>${money(p.total)}</b></td><td>${esc(p.note||'-')}</td></tr>`;
+ }).join('')||'<tr><td colspan="6" class="empty">Belum ada pembayaran.</td></tr>';
+}
+function processPayment(all){
+ const pid=$('payProject').value,start=$('payStart').value,end=$('payEnd').value,date=$('payDate').value;
+ if(!pid||!start||!end||start>end||!date)return alert('Lengkapi proyek, periode kerja, dan tanggal pembayaran.');
+ const chosen=[...document.querySelectorAll('[data-pay-worker]:checked')].map(x=>x.dataset.payWorker);
+ const list=paymentCandidates().filter(r=>all||chosen.includes(r.workerId));
+ if(!list.length)return alert('Tidak ada catatan kerja yang dapat dibayar.');
+ const workerIds=[...new Set(list.map(r=>r.workerId))],amount=list.reduce((a,r)=>a+total(r),0);
+ if(!confirm(`Bayar ${money(amount)} untuk ${workerIds.map(x=>worker(x)?.name||'Pekerja').join(', ')}?`))return;
+ const pidPay=id(),payment={id:pidPay,projectId:pid,start,end,date,note:$('payNote').value.trim(),workerIds,recordIds:list.map(r=>r.id),total:amount,createdAt:new Date().toISOString()};
+ records=records.map(r=>list.some(x=>x.id===r.id)?{...r,paidPaymentId:pidPay}:r);
+ payments.push(payment);save();render();renderPaymentList();alert('Pembayaran tersimpan. Catatan kerja terkait sudah dikunci.');
+}
+$('loadPayList').addEventListener('click',renderPaymentList);
+$('paySelectedBtn').addEventListener('click',()=>processPayment(false));
+$('payAllBtn').addEventListener('click',()=>processPayment(true));
+
 function resetWorkerForm(){$('workerForm').reset();$('workerEditId').value='';$('workerFormTitle').textContent='Tambah Pekerja';$('workerSaveBtn').textContent='Simpan Pekerja';$('workerCancel').classList.add('hidden')}
 function resetWorkForm(){$('workForm').reset();$('workEditId').value='';$('workDate').value=isoToday;$('overtimeHours').value=0;$('workHours').value=1;$('workSaveBtn').textContent='Simpan Hari Kerja';$('workCancel').classList.add('hidden');$('workerChoiceNote').textContent='Centang semua pekerja yang masuk kerja pada tanggal ini. Tarif upah dihitung otomatis sesuai data masing-masing pekerja.';document.querySelectorAll('[data-worker-check]').forEach(c=>{c.checked=false;c.disabled=false});toggleHours()}
 function toggleHours(){$('hoursWrap').classList.toggle('hidden',$('workType').value!=='hour')}
@@ -162,8 +214,8 @@ $('workerCancel').addEventListener('click',resetWorkerForm);
 $('workForm').addEventListener('submit',e=>{e.preventDefault();if(!workers.length)return alert('Tambahkan pekerja terlebih dahulu.');const edit=$('workEditId').value;const selected=[...document.querySelectorAll('[data-worker-check]:checked')].map(c=>c.value);const common={projectId:$('workProject').value,date:$('workDate').value,type:$('workType').value,hours:Number($('workHours').value||0),overtime:Number($('overtimeHours').value||0),note:$('workNote').value.trim()};if(!common.projectId||!common.date||!selected.length||common.overtime<0||(common.type==='hour'&&common.hours<=0))return alert('Pilih minimal satu pekerja dan periksa kembali catatan kerja.');if(edit){if(selected.length!==1)return alert('Saat mengedit, pilih satu pekerja saja.');records=records.map(r=>r.id===edit?{...r,...common,workerId:selected[0]}:r)}else{selected.forEach(workerId=>records.push({id:id(),...common,workerId}))}save();const count=selected.length;resetWorkForm();render();alert(edit?'Catatan hari kerja berhasil diperbarui.':`${count} catatan hari kerja berhasil disimpan.`)});
 $('workCancel').addEventListener('click',resetWorkForm);
 $('workersTable').addEventListener('click',e=>{const eb=e.target.closest('[data-edit-worker]'),db=e.target.closest('[data-delete-worker]');if(eb){const w=worker(eb.dataset.editWorker);$('workerEditId').value=w.id;$('workerName').value=w.name;$('dailyRate').value=w.daily;$('overtimeRate').value=w.overtime;$('workerFormTitle').textContent='Edit Pekerja';$('workerSaveBtn').textContent='Simpan Perubahan';$('workerCancel').classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'})}if(db){const w=worker(db.dataset.deleteWorker);if(confirm(`Hapus pekerja "${w.name}"? Catatan kerja lama tetap disimpan, tetapi upahnya tidak dapat dihitung setelah pekerja dihapus.`)){workers=workers.filter(x=>x.id!==w.id);save();render()}}});
-function editWork(r){$('workEditId').value=r.id;$('workProject').value=r.projectId||'project-default';document.querySelectorAll('[data-worker-check]').forEach(c=>{c.checked=c.value===r.workerId;c.disabled=c.value!==r.workerId});$('workerChoiceNote').textContent='Mode edit: pekerja pada catatan ini dikunci. Untuk mengganti pekerja, batalkan edit lalu catat hari kerja baru.';$('workDate').value=r.date;$('workType').value=r.type;$('workHours').value=r.hours||1;$('overtimeHours').value=r.overtime||0;$('workNote').value=r.note||'';$('workSaveBtn').textContent='Simpan Perubahan';$('workCancel').classList.remove('hidden');toggleHours();document.querySelector('[data-tab="attendance"]').click();window.scrollTo({top:0,behavior:'smooth'})}
-function handleRecordActions(e){const eb=e.target.closest('[data-edit-work]'),db=e.target.closest('[data-delete-work]');if(eb){const r=records.find(x=>x.id===eb.dataset.editWork);if(r)editWork(r)}if(db&&confirm('Hapus catatan hari kerja ini?')){records=records.filter(r=>r.id!==db.dataset.deleteWork);save();render()}}
+function editWork(r){if(r.paidPaymentId)return alert('Catatan sudah dibayar dan terkunci.');$('workEditId').value=r.id;$('workProject').value=r.projectId||'project-default';document.querySelectorAll('[data-worker-check]').forEach(c=>{c.checked=c.value===r.workerId;c.disabled=c.value!==r.workerId});$('workerChoiceNote').textContent='Mode edit: pekerja pada catatan ini dikunci. Untuk mengganti pekerja, batalkan edit lalu catat hari kerja baru.';$('workDate').value=r.date;$('workType').value=r.type;$('workHours').value=r.hours||1;$('overtimeHours').value=r.overtime||0;$('workNote').value=r.note||'';$('workSaveBtn').textContent='Simpan Perubahan';$('workCancel').classList.remove('hidden');toggleHours();document.querySelector('[data-tab="attendance"]').click();window.scrollTo({top:0,behavior:'smooth'})}
+function handleRecordActions(e){const eb=e.target.closest('[data-edit-work]'),db=e.target.closest('[data-delete-work]');if(eb){const r=records.find(x=>x.id===eb.dataset.editWork);if(r)editWork(r)}if(db&&records.find(r=>r.id===db.dataset.deleteWork)?.paidPaymentId)return alert('Catatan sudah dibayar dan tidak dapat dihapus.');if(db&&confirm('Hapus catatan hari kerja ini?')){records=records.filter(r=>r.id!==db.dataset.deleteWork);save();render()}}
 $('historyTable').addEventListener('click',handleRecordActions);$('recentTable').addEventListener('click',handleRecordActions);
 $('historyWorker').addEventListener('change',renderHistory);$('historyMonth').addEventListener('change',renderHistory);
 $('clearHistoryFilter').addEventListener('click',()=>{$('historyWorker').value='all';$('historyMonth').value='';renderHistory()});
@@ -187,7 +239,7 @@ $('projectForm').addEventListener('submit',e=>{e.preventDefault();const edit=$('
 $('projectCancel').addEventListener('click',()=>{$('projectForm').reset();$('projectEditId').value='';$('projectSaveBtn').textContent='Simpan Proyek';$('projectCancel').classList.add('hidden')});
 $('projectsTable').addEventListener('click',e=>{const eb=e.target.closest('[data-edit-project]'),db=e.target.closest('[data-delete-project]');if(eb){const p=projects.find(x=>x.id===eb.dataset.editProject);$('projectEditId').value=p.id;$('projectName').value=p.name;$('projectNote').value=p.note||'';$('projectSaveBtn').textContent='Simpan Perubahan';$('projectCancel').classList.remove('hidden')}if(db){const p=projects.find(x=>x.id===db.dataset.deleteProject);if(records.some(r=>r.projectId===p.id))return alert('Proyek ini masih memiliki catatan kerja. Proyek tidak dapat dihapus.');if(confirm(`Hapus proyek "${p.name}"?`)){projects=projects.filter(x=>x.id!==p.id);save();render()}}});
 $('backupBtn').addEventListener('click',()=>{
- const payload={app:'Aplikasi Data Pekerja & Slip Gaji',version:2,createdAt:new Date().toISOString(),workers,projects,records};
+ const payload={app:'Aplikasi Data Pekerja & Slip Gaji',version:3,createdAt:new Date().toISOString(),workers,projects,records,payments};
  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='backup-data-pekerja-'+isoToday+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
  $('backupStatus').textContent='File backup dibuat. Periksa folder Download perangkat Anda.';
@@ -199,7 +251,7 @@ $('restoreFile').addEventListener('change',async e=>{
   const data=JSON.parse(await file.text());
   if(!data||!Array.isArray(data.workers)||!Array.isArray(data.records))throw new Error('Format file tidak sesuai.');
   if(!confirm('Restore akan mengganti semua data pekerja dan catatan kerja saat ini. Lanjutkan?')){e.target.value='';return}
-  workers=data.workers;records=data.records;projects=Array.isArray(data.projects)?data.projects:[{id:'project-default',name:'Proyek Umum',note:'Proyek bawaan'}];records=records.map(r=>({...r,projectId:r.projectId||(projects[0]?.id||'project-default')}));save();resetWorkerForm();resetWorkForm();render();
+  workers=data.workers;records=data.records;payments=Array.isArray(data.payments)?data.payments:[];projects=Array.isArray(data.projects)?data.projects:[{id:'project-default',name:'Proyek Umum',note:'Proyek bawaan'}];records=records.map(r=>({...r,projectId:r.projectId||(projects[0]?.id||'project-default')}));save();resetWorkerForm();resetWorkForm();render();
   $('backupStatus').textContent='Restore berhasil. Data dari file backup sudah dimuat.';
  }catch(err){alert('Gagal restore: file tidak valid atau rusak. Pilih file backup JSON dari aplikasi ini.');}
  e.target.value='';
